@@ -9,15 +9,62 @@ from sklearn.metrics import plot_confusion_matrix
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import TruncatedSVD
 
+from plotly import tools
+import plotly
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Embedding, Dropout, LSTM, Conv1D, MaxPooling1D, GlobalMaxPooling1D
 
+import functions
+
+dictTar0 = {}
+dictTar1 = {}
+dictTarRemStop0 = {}
+dictTarRemStop1 = {}
+
 dataSubsetTrain = pd.read_csv('./train.csv')
 dataSubsetTest = pd.read_csv('./test.csv')
 # print(dataSubset.head())
+
+target0 = dataSubsetTrain.text[dataSubsetTrain['target'] == 0]
+target1 = dataSubsetTrain.text[dataSubsetTrain['target'] == 1]
+
+dataSubsetTrain = pd.read_csv('./train.csv')
+# get frequency of all words in  text
+dictTar0 = functions.word_frequency(target0)
+dictTar1 = functions.word_frequency(target1)
+
+dictTarRemStop0 = functions.word_frex_without_stop(target0)
+dictTarRemStop1 = functions.word_frex_without_stop(target1)
+
+
+
+plt.figure()
+fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2)
+
+
+y_pos = np.arange(len(dictTar0.word.head(50)))
+x_pos = dictTar0.wordcount.head(50)
+ax1.barh(y_pos, x_pos)
+ax1.set_title('Target = 0')
+# ax1.xaxis.set_ticks( dictTar0.word.head(50))
+ax1.set_yticklabels(dictTar0.word.head(50))
+# ax1.set_ylabel(y_pos, dictTar0.word.head(50))
+
+
+y_pos = np.arange(len(dictTar1.word.head(50)))
+x_pos = dictTar1.wordcount.head(50)
+ax2.barh(y_pos, x_pos)
+ax2.set_title('Target = 1')
+
+plt.yticks(y_pos, dictTar1.word.head(50) )
+
+plt.gca().invert_yaxis()
+fig.suptitle ('Words sorted without stopwords.')
+plt.show()
 
 Xtrain, Xtest, Ytrain, Ytest = train_test_split(dataSubsetTrain.text, dataSubsetTrain.target, test_size= 0.4286, random_state= 1)
 
