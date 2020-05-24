@@ -15,10 +15,17 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Embedding, Dropout, LSTM, Conv1D, MaxPooling1D, GlobalMaxPooling1D
 
-dataSubset = pd.read_csv('./train.csv')
+dataSubsetTrain = pd.read_csv('./train.csv')
+dataSubsetTest = pd.read_csv('./test.csv')
 # print(dataSubset.head())
 
-Xtrain, Xtest, Ytrain, Ytest = train_test_split(dataSubset.text, dataSubset.target, test_size= 0.4286, random_state= 1)
+Xtrain, Xtest, Ytrain, Ytest = train_test_split(dataSubsetTrain.text, dataSubsetTrain.target, test_size= 0.4286, random_state= 1)
+
+Xtrain = dataSubsetTrain.text
+Ytrain = dataSubsetTrain.target
+
+XValid = dataSubsetTest.text
+XValidIdx = dataSubsetTest.id
 
 wordVector = TfidfVectorizer(max_features=20000, lowercase=True, analyzer='word', #You can also try 'char'
                             stop_words= 'english',ngram_range=(1,3),dtype=np.float32)
@@ -62,10 +69,11 @@ model = Sequential()
 model.add(Embedding(N, 128, input_length=X_train_mat.shape[1]))
 model.add(Conv1D(128, 5, activation='relu'))
 model.add(GlobalMaxPooling1D())
+model.add(Dense(8, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
 
-epochs = 50
+epochs = 15
 batch_size = 64
 
 history = model.fit(X_train_mat, Ytrain, epochs=epochs, batch_size=batch_size, validation_split=0.1)
@@ -80,7 +88,7 @@ XTestPredict = XTestPredict.astype(int)
 
 XTestPredict = pd.DataFrame(XTestPredict)
 XTestPredict = XTestPredict.rename(columns = {0:'target'})
-XTestPredict['id'] = Ytest.index
+XTestPredict['id'] = XValidIdx
 XTestPredict = XTestPredict[['id', 'target']]
 XTestPredict = XTestPredict.sort_values('id')
 
