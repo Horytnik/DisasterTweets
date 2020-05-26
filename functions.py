@@ -3,6 +3,8 @@ import plotly.graph_objs as go
 
 from wordcloud import STOPWORDS
 
+
+# Function which calculates frequency of words
 def word_frequency(inputText):
 
     freqDict = {}
@@ -19,6 +21,7 @@ def word_frequency(inputText):
     freqDict.columns = ["word", "wordcount"]
     return freqDict
 
+# Function which calculates frequency of words but with removed stopwords.
 def word_frex_without_stop(inputText):
     freqDict = {}
 

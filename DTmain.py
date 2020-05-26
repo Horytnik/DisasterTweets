@@ -41,31 +41,36 @@ dictTarRemStop0 = functions.word_frex_without_stop(target0)
 dictTarRemStop1 = functions.word_frex_without_stop(target1)
 
 
-
+# Plot the most frequent words
 plt.figure()
-fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2)
+# fig, (ax1,ax2) = plt.subplots(nrows=1, ncols=2)
 
 
-y_pos = np.arange(len(dictTar0.word.head(50)))
-x_pos = dictTar0.wordcount.head(50)
-ax1.barh(y_pos, x_pos)
-ax1.set_title('Target = 0')
+y_pos = np.arange(len(dictTarRemStop0.word.head(50)))
+x_pos = dictTarRemStop0.wordcount.head(50)
+plt.barh(y_pos, x_pos)
+plt.title('Frequency without stopwords when it is not accident')
 # ax1.xaxis.set_ticks( dictTar0.word.head(50))
-ax1.set_yticklabels(dictTar0.word.head(50))
+# plt.set_yticklabels(dictTar0.word.head(50))
+plt.yticks(y_pos, dictTarRemStop0.word.head(50) )
 # ax1.set_ylabel(y_pos, dictTar0.word.head(50))
-
-
-y_pos = np.arange(len(dictTar1.word.head(50)))
-x_pos = dictTar1.wordcount.head(50)
-ax2.barh(y_pos, x_pos)
-ax2.set_title('Target = 1')
-
-plt.yticks(y_pos, dictTar1.word.head(50) )
-
 plt.gca().invert_yaxis()
-fig.suptitle ('Words sorted without stopwords.')
 plt.show()
 
+
+plt.figure()
+y_pos = np.arange(len(dictTarRemStop1.word.head(50)))
+x_pos = dictTarRemStop1.wordcount.head(50)
+plt.barh(y_pos, x_pos)
+plt.title('Frequency without stopwords when it is accident')
+
+plt.yticks(y_pos, dictTarRemStop1.word.head(50) )
+
+plt.gca().invert_yaxis()
+# fig.suptitle ('Words sorted without stopwords.')
+plt.show()
+
+# Split data set into train and test
 Xtrain, Xtest, Ytrain, Ytest = train_test_split(dataSubsetTrain.text, dataSubsetTrain.target, test_size= 0.4286, random_state= 1)
 
 Xtrain = dataSubsetTrain.text
@@ -74,12 +79,13 @@ Ytrain = dataSubsetTrain.target
 XValid = dataSubsetTest.text
 XValidIdx = dataSubsetTest.id
 
+# TFIDF vectorizer
 wordVector = TfidfVectorizer(max_features=20000, lowercase=True, analyzer='word', #You can also try 'char'
                             stop_words= 'english',ngram_range=(1,3),dtype=np.float32)
 #
 XtrainVect = wordVector.fit_transform(Xtrain)
 XtestVect = wordVector.transform(Xtest)
-#
+# Logistic Regression model
 model = LogisticRegression(random_state = 1)
 model.fit(XtrainVect, Ytrain)
 
@@ -103,6 +109,7 @@ print(classification_report(Ytest, model.predict(XtestVect)))
 
 
 N = 1000
+# Tokenization
 tokenizer = Tokenizer(num_words=N, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
 tokenizer.fit_on_texts(Xtrain)
 word_index = tokenizer.word_index
@@ -110,8 +117,7 @@ word_index = tokenizer.word_index
 X_train_mat = tokenizer.texts_to_sequences(Xtrain)
 X_train_mat = pad_sequences(X_train_mat, maxlen=100)
 
-
-
+# Sequential nerual network model
 model = Sequential()
 model.add(Embedding(N, 128, input_length=X_train_mat.shape[1]))
 model.add(Conv1D(128, 5, activation='relu'))
@@ -126,6 +132,7 @@ batch_size = 64
 history = model.fit(X_train_mat, Ytrain, epochs=epochs, batch_size=batch_size, validation_split=0.1)
 print(history)
 
+# Prediction for kaggle score
 X_test_mat = tokenizer.texts_to_sequences(Xtest)
 X_test_mat = pad_sequences(X_test_mat, maxlen=100)
 
@@ -142,6 +149,7 @@ XTestPredict = XTestPredict.sort_values('id')
 pd.DataFrame(XTestPredict).to_csv("submission.csv", index=False)
 
 print(history.history.keys())
+
 # summarize history for accuracy
 plt.plot(history.history['binary_accuracy'])
 plt.plot(history.history['val_binary_accuracy'])
