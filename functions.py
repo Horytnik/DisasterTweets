@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import plotly.graph_objs as go
+
 
 from wordcloud import STOPWORDS
 
@@ -39,8 +39,8 @@ def word_frex_without_stop(inputText):
     freqDict = pd.DataFrame(sorted(freqDict.items(), key=lambda x: x[1], reverse = True))
     freqDict.columns = ["word", "wordcount"]
     return freqDict
-print('aaa')
 
+# Function which removes stop words and unneccesary words
 def remove_stop_words(inputText):
 
     list = []
