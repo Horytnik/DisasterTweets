@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import plot_confusion_matrix
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import TruncatedSVD
+from sklearn.model_selection import cross_val_score
+
+#Parameter tuning
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import GridSearchCV
 
 from plotly import tools
 import plotly
@@ -16,7 +21,9 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Embedding, Dropout, LSTM, Conv1D, MaxPooling1D, GlobalMaxPooling1D
+# from keras.models import Sequential
+from tensorflow.keras.layers import Dense, Embedding,Flatten, Dropout, LSTM, Conv1D, MaxPooling1D, GlobalMaxPooling1D
+from keras.callbacks import EarlyStopping
 
 import functions
 
@@ -96,6 +103,17 @@ plot_confusion_matrix(model, XtestVect, Ytest)
 plt.show()
 
 print(classification_report(Ytest, model.predict(XtestVect)))
+
+# Prediction preparaton for kaggle
+# XTestPredict = model.predict(XtestVect)
+#
+# XTestPredict = pd.DataFrame(XTestPredict)
+# XTestPredict = XTestPredict.rename(columns = {0:'target'})
+# XTestPredict['id'] = XValidIdx
+# XTestPredict = XTestPredict[['id', 'target']]
+#
+# pd.DataFrame(XTestPredict).to_csv("RegressionModelSubmission.csv", index=False)
+
 #
 # pipeline = Pipeline([
 #                 ('tfidf', TfidfVectorizer()),
@@ -107,46 +125,124 @@ print(classification_report(Ytest, model.predict(XtestVect)))
 #
 # print(reg.score(XtrainVect, Ytrain))
 
+XtrainRvStop = functions.remove_stop_words(Xtrain)
 
-N = 1000
+N = 180
 # Tokenization
 tokenizer = Tokenizer(num_words=N, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
-tokenizer.fit_on_texts(Xtrain)
-word_index = tokenizer.word_index
+tokenizer.fit_on_texts(XtrainRvStop)
+word_index_train = tokenizer.word_index
 
-X_train_mat = tokenizer.texts_to_sequences(Xtrain)
+X_train_mat = tokenizer.texts_to_sequences(XtrainRvStop)
 X_train_mat = pad_sequences(X_train_mat, maxlen=100)
 
 # Sequential nerual network model
-model = Sequential()
-model.add(Embedding(N, 128, input_length=X_train_mat.shape[1]))
-model.add(Conv1D(128, 5, activation='relu'))
-model.add(GlobalMaxPooling1D())
-model.add(Dense(8, activation='relu'))
-model.add(Dense(1, activation='sigmoid'))
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
+# def sequential_model():
+#     model = Sequential()
+#     model.add(Embedding(N, 32, input_length=X_train_mat.shape[1]))
+#     model.add(Conv1D(128, 5, activation='relu'))
+#     model.add(MaxPooling1D(pool_size=4))
+#     model.add(LSTM(64, dropout=0.4, recurrent_dropout=0.4))
+#     model.add(Dense(14, activation='relu'))
+#     model.add(Dense(1, activation='sigmoid'))
+#     model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['binary_accuracy'])
+#     return model
 
-epochs = 15
-batch_size = 64
+# def sequential_model():
+#     model = tf.keras.Sequential([
+#         tf.keras.layers.Embedding(N, 128, input_length=X_train_mat.shape[1]),
+#         tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64)),
+#         tf.keras.layers.Dense(14, activation='relu'),
+#         tf.keras.layers.Dense(1, activation='sigmoid')  # remember this is a binary clasification
+#     ])
+#     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
+#     return model
 
-history = model.fit(X_train_mat, Ytrain, epochs=epochs, batch_size=batch_size, validation_split=0.1)
+# Sequential nerual network model
+def sequential_model(optimizer):
+    model = Sequential()
+    model.add(Embedding(N, 128, input_length=X_train_mat.shape[1]))
+    # model.add(Flatten())
+    model.add(Conv1D(128, 5, activation='relu'))
+    # model.add(GlobalMaxPooling1D())
+    model.add(MaxPooling1D(pool_size=4))
+    model.add(LSTM(128, dropout=0.4, recurrent_dropout=0.4))
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(25, activation='relu'))
+    model.add(Dense(10, activation='relu'))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['binary_accuracy'])
+    return model
+
+classifier = KerasClassifier(build_fn=sequential_model)
+
+# model = sequential_model('rmsprop')
+
+#grid_search.best_params_
+#{'batch_size': 45, 'epochs': 10, 'optimizer': 'adam'}
+
+
+
+epochs = 7
+batch_size = 45
+
+# parameters = {'batch_size': [40,45],
+#               'epochs': [10,12],
+#               'optimizer': ['adam', 'rmsprop'],
+#               # 'dropout1' : [0.2,0.25,3],
+#               # 'dropout2' : [0.2,0.25,3],
+#               }
+# grid_search = GridSearchCV(estimator=classifier,
+#                            param_grid = parameters,
+#                            scoring = 'accuracy',
+#                            cv = 10)
+# grid_search = grid_search.fit(X_train_mat, Ytrain)
+
+model = sequential_model('adam')
+
+# For test part
+# XtestRvStop = functions.remove_stop_words(Xtest)
+#
+# # Tokenization
+# tokenizer = Tokenizer(num_words=N, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
+# tokenizer.fit_on_texts(XtestRvStop)
+# word_index = tokenizer.word_index
+#
+# X_test_mat = tokenizer.texts_to_sequences(XtestRvStop)
+# X_test_mat = pad_sequences(X_test_mat, maxlen=100)
+
+
+history = model.fit(X_train_mat, Ytrain,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    validation_split=0.2)
+# history = model.fit(X_train_mat, Ytrain, epochs=epochs, batch_size=batch_size, validation_data=(X_test_mat, Ytest))
 print(history)
 
 # Prediction for kaggle score
-X_test_mat = tokenizer.texts_to_sequences(Xtest)
-X_test_mat = pad_sequences(X_test_mat, maxlen=100)
+XValidRvStop = functions.remove_stop_words(XValid)
 
-XTestPredict = model.predict(X_test_mat)
-XTestPredict = XTestPredict.round()
-XTestPredict = XTestPredict.astype(int)
+# tokenizer = Tokenizer(num_words=N, filters='!"#$%&()*+,-./:;<=>?@[\]^_`{|}~', lower=True)
+# tokenizer.fit_on_texts(XValidRvStop)
 
-XTestPredict = pd.DataFrame(XTestPredict)
-XTestPredict = XTestPredict.rename(columns = {0:'target'})
-XTestPredict['id'] = XValidIdx
-XTestPredict = XTestPredict[['id', 'target']]
-XTestPredict = XTestPredict.sort_values('id')
+# word_index_valid = tokenizer.word_index
 
-pd.DataFrame(XTestPredict).to_csv("submission.csv", index=False)
+X_valid_mat = tokenizer.texts_to_sequences(XValidRvStop)
+X_valid_mat = pad_sequences(X_valid_mat, maxlen=100)
+
+
+
+XValidPredict = model.predict(X_valid_mat)
+XValidPredict = XValidPredict.round()
+XValidPredict = XValidPredict.astype(int)
+
+XValidPredict = pd.DataFrame(XValidPredict)
+XValidPredict = XValidPredict.rename(columns = {0:'target'})
+XValidPredict['id'] = XValidIdx
+XValidPredict = XValidPredict[['id', 'target']]
+XValidPredict = XValidPredict.sort_values('id')
+
+pd.DataFrame(XValidPredict).to_csv("NNsubmission.csv", index=False)
 
 print(history.history.keys())
 
@@ -158,6 +254,7 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 plt.ylim(0.65, 1)
+# plt.ylim(0, 1)
 plt.show()
 # summarize history for loss
 plt.figure()
@@ -167,6 +264,8 @@ plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
+# plt.ylim(0, 0.9)
+plt.ylim(0, 1)
 plt.show()
 print('end')
 '''
